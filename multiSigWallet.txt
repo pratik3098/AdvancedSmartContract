@@ -7,7 +7,7 @@ contract multiSigWallet{
   uint consensusType =1;  // Defa
   uint walletBalance=0;
   address[] owners;
-  mapping(address=>bytes32[6]) op_sings;
+  mapping(address=>bytes32[3]) op_sings;
   event Receive(address src, uint value);
   
   constructor(uint _consensusType) public {
@@ -20,20 +20,9 @@ contract multiSigWallet{
  // Requires consensus of all of current owners
  function addOwner(address _owner) public {
   require(owners.length < 3);
-  bool approved= true;
-  for(uint i=0; i< owners.length; i++){
-  //  approved= recoverSigner(op_sings[owners[i]][4]) == owners[i];
-    if(!approved)
-    {
-      break;
-    }
-     
-  }
-  require(approved, "Error: Invoke not valid");
+  require(consensus1(4), "Error: Invoke not valid");
   owners.push(_owner);
-   for(uint i=0; i< owners.length; i++){
-    op_sings[owners[i]][4]=0;
-  }
+  clearSigns(4);
  }
  
  function changeConsensusType(uint _type) public {
@@ -58,6 +47,55 @@ contract multiSigWallet{
   
   function send(uint amount, address payable dst) public payable {
       dst.transfer(amount);
+  }
+  
+  function consensus1(uint op) internal view returns(bool){
+   bool approved= true;
+    for(uint i=0; i< owners.length; i++){
+  // approved= recoverSigner(op_sings[owners[i]][op - 3]) == owners[i];
+    if(!approved){
+      break;
+    }
+  }
+  return approved;
+  }
+  
+  
+  
+ function consensus2(uint op) internal view returns(bool){
+  uint counter = 0;
+  bool approved= true;
+  for(uint i=0; i< owners.length; i++){
+  // approved= recoverSigner(op_sings[owners[i]][op - 3]) == owners[i];
+    if(!approved)
+    {
+      break;
+    }
+     counter++;
+  }
+ 
+  return (counter  >= (owners.length /2) ); 
+  }
+  
+    
+ function consensus3(uint op) internal view returns(bool){
+  uint counter = 0;
+  bool approved= true;
+  for(uint i=0; i< owners.length; i++){
+  // approved= recoverSigner(op_sings[owners[i]][op - 3]) == owners[i];
+    if(!approved || counter >=1)
+    {
+      break;
+    }
+     counter++;
+  }
+ 
+  return (counter  >= 1 ); 
+  }
+  function clearSigns(uint op) public {
+    for(uint i=0; i< owners.length; i++){
+    op_sings[owners[i]][op - 3]=0;
+  }
   }
   
   function recieve() external payable {
