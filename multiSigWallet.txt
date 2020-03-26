@@ -1,13 +1,13 @@
 pragma solidity ^0.6.2;
 
 contract multiSigWallet{
- // Wallet supports maximum of three owners 
  // Types of consensus: 1. Majority 2. All 3. One of them
- // Type of contract operations: 4. sendEthers 5. addOwner 6. changeOwner
-  uint consensusType =1;  // Defa
-  uint walletBalance=0;
+ // Type of contract operations: 4. sendEthers 5. addOwner 6. changeConsensusType
+ 
+  uint consensusType= 1;  
+  uint walletBalance= 0;
   address[] owners;
-  mapping(address=>bytes32[3]) op_sings;
+  mapping(address=>bytes[3]) op_signs;
   event Receive(address src, uint value);
   
   constructor(uint _consensusType) public {
@@ -16,21 +16,25 @@ contract multiSigWallet{
     consensusType = _consensusType;
   }
   
- // Function to add new owner 
- // Requires consensus of all of current owners
+
  function addOwner(address _owner) public {
   require(owners.length < 3);
   require(consensus1(4), "Error: Invoke not valid");
   owners.push(_owner);
-  clearSigns(4);
+  clearSigns(5);
  }
  
  function changeConsensusType(uint _type) public {
   require(1<= _type && _type <=3 );
   consensusType= _type;
+  clearSigns(6);
+ }
+ 
+ function signSendEthers(uint amt) public payable isOwner {
+  op_signs[msg.sender][1]= abi.encodeWithSignature("\x19Ethereum Signed Message:\n",msg.sender,amt, block.timestamp);
  }
    
- function recoverSigner(bytes32 signMsg, bytes32 signature) internal pure returns (address)
+ function recoverSigner(bytes32 signMsg, bytes32  signature) internal pure returns (address)
   {
     bytes32 r;
     bytes32 s;
@@ -45,14 +49,16 @@ contract multiSigWallet{
     return ecrecover(signMsg, v, r, s);
   }
   
-  function send(uint amount, address payable dst) public payable {
+  function send(uint amount, address payable dst) public payable approved(4) {
       dst.transfer(amount);
+      clearSigns(5);
   }
   
   function consensus1(uint op) internal view returns(bool){
+  require(op>=4 && op<=6);
    bool approved= true;
     for(uint i=0; i< owners.length; i++){
-  // approved= recoverSigner(op_sings[owners[i]][op - 3]) == owners[i];
+   approved= recoverSigner(bytes32(""),bytes32(op_signs[owners[i]][op - 4])) == owners[i];
     if(!approved){
       break;
     }
@@ -104,8 +110,32 @@ contract multiSigWallet{
   
   function clearSigns(uint op) public {
     for(uint i=0; i< owners.length; i++){
-    op_sings[owners[i]][op - 4]=0;
+    op_signs[owners[i]][op - 4]= "";
   }
+  }
+  
+
+  modifier approved(uint op)  {
+  bool appr;
+  if (consensusType == 1)
+    appr= consensus1(op);
+  else if (consensusType == 2)
+    appr = consensus2(op);
+  else if (consensusType == 3)
+    appr = consensus3(op);
+    require(appr,"Error: Transcation not approved");
+   _;
+  }
+  
+  modifier isOwner{
+  bool appr;
+  for(uint i=0;i< owners.length;i++){
+    appr = (owners[i] == msg.sender);
+    if(appr)
+    break;
+  }
+  require(appr,"Error: not owner");
+   _;
   }
   
   function recieve() external payable {
