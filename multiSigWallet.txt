@@ -1,10 +1,10 @@
 pragma solidity ^0.6.2;
 
 contract multiSigWallet{
- // Types of consensus: 1. Majority 2. All 3. One of them
- // Type of contract operations: 4. sendEthers 
- 
-  uint constant maxOwners =3;
+
+ // Types of consensus: 1. Atleast one  2. Majority  3. All  
+
+  uint constant maxOwners = 3;
 
   uint consensusType= 1;  
   
@@ -21,7 +21,7 @@ contract multiSigWallet{
   
 
  function addOwner(address _owner) public _isOwner {
-  require(owners.length < 3);
+  require(owners.length < maxOwners);
   owners.push(_owner);
  }
  
@@ -148,6 +148,4 @@ contract multiSigWallet{
   require(appr,"Error: not owner");
    _;
   }
-  
-  
 }
