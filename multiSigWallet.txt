@@ -11,7 +11,8 @@ contract multiSigWallet{
 
   address[] owners;
   mapping(address=>bytes) op_signs;
-  event Receive(address src, uint value);
+  event Received(address src, uint amount);
+  event Sent(address dst, uint amount);
   
   constructor(uint _consensusType) public {
     require(1<= _consensusType && _consensusType <=3);
@@ -26,9 +27,10 @@ contract multiSigWallet{
  }
  
  function send(uint amount, address payable dst) public payable _approveSendEthers(amount, dst) _isOwner {
-      require(amount <= address(this).balance);
+      require(amount <= address(this).balance,"Error: not enough balance");
       dst.transfer(amount);
       clearSigns();
+      emit Sent(dst,amount);
   }
  
  function changeConsensusType(uint _type) public _isOwner{
@@ -41,7 +43,11 @@ contract multiSigWallet{
  }
  
  function recieve() external payable {
-    emit Receive(msg.sender, msg.value);
+    emit Received(msg.sender, msg.value);
+  }
+  
+  function getBalance() external view returns (uint) {
+   return address(this).balance;
   }
   
    
@@ -148,4 +154,5 @@ contract multiSigWallet{
   require(appr,"Error: not owner");
    _;
   }
+  
 }
