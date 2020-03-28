@@ -12,6 +12,7 @@ contract multiSigWallet{
   mapping(address=>bytes) op_signs;
   event Received(address src, uint amount);
   event Sent(address dst, uint amount);
+  event NewOwner(address owner);
   
   constructor(uint _consensusType) public {
     require(1<= _consensusType && _consensusType <=3);
@@ -20,12 +21,13 @@ contract multiSigWallet{
   }
   
 
- function addOwner(address _owner) public _isOwner {
+ function addOwner(address _owner) public _isOwner _noDuplicate(_owner){
   require(owners.length < maxOwners);
   owners.push(_owner);
+  emit NewOwner(_owner);
  }
  
- function send(uint amount, address payable dst) public payable _approveSendEthers(amount, dst) _isOwner {
+ function send(uint amount, address payable dst) public payable _approveSendEthers(amount, dst) _isOwner _isValidAddress(dst){
       require(amount <= address(this).balance,"Error: not enough balance");
       dst.transfer(amount);
       clearSigns();
@@ -37,7 +39,7 @@ contract multiSigWallet{
   consensusType= _type;
  }
  
- function signSendEthers(uint amt, address dst) public payable _isOwner {
+ function signSendEthers(uint amt, address dst) public payable _isOwner _isValidAddress(dst) {
   op_signs[msg.sender]= abi.encodeWithSignature("send:",dst,amt);
  }
  
@@ -126,7 +128,18 @@ contract multiSigWallet{
   }
   }
   
+  
+  function isOwner(address _owner) external view returns (bool) {
+    for(uint i=0;i< owners.length;i++){
+    if (owners[i] == _owner)
+     return true;
+  }
+    return false;  
+  }
 
+  function getConsensus() external view returns (uint) {
+    return consensusType;
+  }
 
   modifier _approveSendEthers(uint amt, address dst)  {
   bytes32 data=keccak256(abi.encodePacked(dst,amt));
@@ -141,12 +154,26 @@ contract multiSigWallet{
    _;
   }
   
-  
-  
+
   modifier _isOwner{
   bool appr;
   for(uint i=0;i< owners.length;i++){
     appr = (owners[i] == msg.sender);
+    if(appr)
+    break;
+  }
+  require(appr,"Error: not owner");
+   _;
+  }
+  
+  modifier _isValidAddress(address _dst){
+    require(_dst != address(0),"Error: Null address");
+    _;
+  }
+  modifier _noDuplicate(address _owner){
+  bool appr;
+  for(uint i=0;i< owners.length;i++){
+    appr = ! (owners[i] == _owner);
     if(appr)
     break;
   }
