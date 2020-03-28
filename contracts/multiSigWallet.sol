@@ -12,6 +12,7 @@ contract multiSigWallet{
   mapping(address=>bytes) op_signs;
   event Received(address src, uint amount);
   event Sent(address dst, uint amount);
+  event Signed(address dst, uint amount);
   event NewOwner(address owner);
   
   constructor(uint _consensusType) public {
@@ -27,7 +28,7 @@ contract multiSigWallet{
   emit NewOwner(_owner);
  }
  
- function send(uint amount, address payable dst) public payable _approveSendEthers(amount, dst) _isOwner _isValidAddress(dst){
+ function send(address payable dst, uint amount) public payable _approveSendEthers(amount, dst) _isOwner _isValidAddress(dst){
       require(amount <= address(this).balance,"Error: not enough balance");
       dst.transfer(amount);
       clearSigns();
@@ -39,8 +40,9 @@ contract multiSigWallet{
   consensusType= _type;
  }
  
- function signSendEthers(uint amt, address dst) public payable _isOwner _isValidAddress(dst) {
+ function signSendEthers(address dst, uint amt) public  _isOwner _isValidAddress(dst) {
   op_signs[msg.sender]= abi.encodeWithSignature("send:",dst,amt);
+  emit Signed(dst,amt);
  }
  
  function recieve() external payable {
