@@ -30,6 +30,10 @@
  When approving the transactions, error checking has been done to ensure wallet has enought balance and the payee is a valid address.
 
 
+ ## Efficiency
+ The consensus operations are optimized to work eifficiently, even thought the loops are being used. It is made sure that loops break as soon as the consensus is reached.
+
+
 
 
 
