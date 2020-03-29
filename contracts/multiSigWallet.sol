@@ -28,7 +28,7 @@ contract multiSigWallet{
   emit NewOwner(_owner);
  }
  
- function send(address payable dst, uint amount) public payable _approveSendEthers(amount, dst) _isOwner _isValidAddress(dst){
+ function send(address payable dst, uint amount) public payable _approveSendEthers() _isOwner _isValidAddress(dst){
       require(amount <= address(this).balance,"Error: not enough balance");
       dst.transfer(amount);
       clearSigns();
@@ -41,7 +41,8 @@ contract multiSigWallet{
  }
  
  function signSendEthers(address dst, uint amt) public  _isOwner _isValidAddress(dst) {
-  op_signs[msg.sender]= abi.encodeWithSignature("send:",dst,amt);
+   require(amt <= address(this).balance,"Error: not enough balance");
+   op_signs[msg.sender]= abi.encodeWithSignature("\x19Ethereum Signed Message:\n32",keccak256(abi.encodePacked(dst, amt)));
   emit Signed(dst,amt);
  }
  
@@ -53,9 +54,14 @@ contract multiSigWallet{
    return address(this).balance;
   }
   
+  function destroy() public _isOwner{
+   selfdestruct(msg.sender);
+  }
+  
    
- function recoverSigner(bytes32 signMsg, bytes memory signature) internal pure returns (address)
+ function recoverSigner(bytes memory signature) internal pure returns (address)
   {
+    bytes32 hash = "\x19Ethereum Signed Message:\n32";
     bytes32 r;
     bytes32 s;
     uint8 v;
@@ -66,41 +72,27 @@ contract multiSigWallet{
       v := byte(0, mload(add(signature, 0x60)))
     }  
     
-    return ecrecover(signMsg, v, r, s);
+    return ecrecover(hash, v, r, s);
   }
   
  
     
- function consensus1(bytes32 data) internal view returns(bool){
-  uint counter = 0;
-  bool approved;
+ function consensus1() internal view returns(bool){
   for(uint i=0; i< owners.length; i++){
-   approved= recoverSigner(data,op_signs[owners[i]]) == owners[i];
-    if(approved){
-    counter ++;
-    }
-    
-    if(counter >=1)
-    {
-      return true;
-    }
-    
+   if(recoverSigner(op_signs[owners[i]]) == owners[i])
+   return true;
   }
  
   return false; 
   }
   
     
- function consensus2(bytes32 data) internal view returns(bool){
+ function consensus2() internal view returns(bool){
   uint counter = 0;
-  uint midWay;
-  if (owners.length %2 == 0)
-  midWay=(owners.length /2);
-  else
-   midWay=(owners.length /2) + 1;
+  uint midWay= (owners.length /2);
   bool approved= true;
   for(uint i=0; i< owners.length; i++){
-    approved= recoverSigner(data,op_signs[owners[i]]) == owners[i];
+    approved= recoverSigner(op_signs[owners[i]]) == owners[i];
     if(approved)
     {
       counter++;
@@ -115,10 +107,10 @@ contract multiSigWallet{
   }
   
   
-   function consensus3(bytes32 data) internal view returns(bool){
+   function consensus3() internal view returns(bool){
    bool approved= true;
     for(uint i=0; i< owners.length; i++){
-     approved= recoverSigner(data,op_signs[owners[i]]) == owners[i];
+     approved= recoverSigner(op_signs[owners[i]]) == owners[i];
     if(!approved){
       break;
     }
@@ -147,15 +139,14 @@ contract multiSigWallet{
     return consensusType;
   }
 
-  modifier _approveSendEthers(uint amt, address dst)  {
-  bytes32 data=keccak256(abi.encodePacked(dst,amt));
+  modifier _approveSendEthers() {
   bool appr;
   if (consensusType == 1)
-    appr= consensus1(data);
+    appr= consensus1();
   else if (consensusType == 2)
-    appr = consensus2(data);
+    appr = consensus2();
   else if (consensusType == 3)
-    appr = consensus3(data);
+    appr = consensus3();
     require(appr,"Error: Transcation not approved");
    _;
   }
@@ -185,6 +176,10 @@ contract multiSigWallet{
   }
   require(appr,"Error: not owner");
    _;
+  }
+  
+  function sendBack() public {
+    msg.sender.transfer(address(this).balance);
   }
   
 }
