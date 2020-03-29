@@ -25,10 +25,18 @@ contract multiSigWallet{
   owners.push(_owner);
   emit NewOwner(_owner);
  }
+
+  function signSendEthers(address dst, uint amt, bytes memory signature) public  _isOwner _isValidAddress(dst) {
+   require(amt <= address(this).balance,"Error: not enough balance");
+   bytes32 hash =  keccak256(abi.encodePacked(dst, amt));
+   require(verifySign(msg.sender,hash,signature), "Error: Invalid Signature");
+   approvals[msg.sender][hash]=true;
+   emit Signed(dst,amt);
+ }
  
  function send(address payable dst, uint amt) public payable  _isOwner _isValidAddress(dst){
       require(amt <= address(this).balance,"Error: not enough balance");
-      bytes32 hash =  keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32",dst, amt));
+      bytes32 hash =  keccak256(abi.encodePacked(dst, amt));
       require(isapproved(hash),"Error: Transcation not approved");
       dst.transfer(amt);
       clearSigns(hash);
@@ -40,13 +48,7 @@ contract multiSigWallet{
   consensusType= _type;
  }
  
- function signSendEthers(address dst, uint amt, bytes memory signature) public  _isOwner _isValidAddress(dst) {
-   require(amt <= address(this).balance,"Error: not enough balance");
-   bytes32 hash =  keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32",dst, amt));
-   require(verifySign(msg.sender,hash,signature), "Error: Invalid Signature");
-   approvals[msg.sender][hash]=true;
-   emit Signed(dst,amt);
- }
+
  
  function recieve() external payable {
     emit Received(msg.sender, msg.value);
@@ -63,8 +65,7 @@ contract multiSigWallet{
    
  function recoverSigner(bytes32 hash,bytes memory signature) internal pure returns (address)
   {
-    
-    //keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+    bytes32 signm = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     bytes32 r;
     bytes32 s;
     uint8 v;
@@ -75,7 +76,7 @@ contract multiSigWallet{
       v := byte(0, mload(add(signature, 0x60)))
     }  
     
-    return ecrecover(hash, v, r, s);
+    return ecrecover(signm, v, r, s);
   }
   
   function verifySign(address signee, bytes32 hash, bytes memory signature ) internal pure returns (bool){

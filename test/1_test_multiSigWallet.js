@@ -33,11 +33,13 @@ contract("multiSigWallet", accounts => {
      
      it("should be able to sign transcation", async () => {
       let amt =web3.utils.toWei('2', 'ether')
-      let sign = await web3.eth.sign("\x19Ethereum Signed Message:\n32" + accounts[3]+amt ,accounts[0])
-      console.log(accounts[3])
-      /*await wallet.changeConsensusType(1)
-      await wallet.signSendEthers(accounts[3],amt,sign)
-      let res= await wallet.isapprovedByOwner(accounts[0], accounts[3],amt)
+      let msg =web3.utils.keccak256(accounts[3] ,amt )
+      let msg1 = web3.utils.keccak256("\x19Ethereum Signed Message:\n32",accounts[3] ,amt)
+      let sign = await web3.eth.sign("\x19Ethereum Signed Message:\n32"+msg,accounts[0])
+      
+      await wallet.changeConsensusType(1)
+       await wallet.signSendEthers(accounts[3],amt,sign)
+      /*let res= await wallet.isapprovedByOwner(accounts[0], accounts[3],amt)
       assert.equal(true,res,"Transcation successfully signed")
       */
      })
