@@ -19,7 +19,11 @@ contract multiSigWallet{
     consensusType = _consensusType;
   }
   
-
+  function changeConsensusType(uint _type) public _isOwner{
+  require(1<= _type && _type <=3 );
+  consensusType= _type;
+ }
+ 
  function addOwner(address _owner) public _isOwner _noDuplicate(_owner){
   require(owners.length < maxOwners);
   owners.push(_owner);
@@ -42,12 +46,7 @@ contract multiSigWallet{
       clearSigns(hash);
       emit Sent(dst,amt);
   }
- 
- function changeConsensusType(uint _type) public _isOwner{
-  require(1<= _type && _type <=3 );
-  consensusType= _type;
- }
- 
+
 
  
  function recieve() external payable {
@@ -71,9 +70,9 @@ contract multiSigWallet{
     uint8 v;
     require(signature.length == 65);
      assembly {
-      r := mload(add(signature, 0x20))
-      s := mload(add(signature, 0x40))
-      v := byte(0, mload(add(signature, 0x60)))
+      r := mload(add(signature, 32))
+      s := mload(add(signature, 64))
+      v := byte(0, mload(add(signature, 96)))
     }  
     
     return ecrecover(signm, v, r, s);
