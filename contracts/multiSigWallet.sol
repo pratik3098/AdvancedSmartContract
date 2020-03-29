@@ -159,6 +159,13 @@ contract multiSigWallet{
   }
   
   function isapprovedByOwner(address _owner,address dst, uint amt ) external view returns (bool){
+  bool appr;
+    for(uint i=0;i< owners.length;i++){
+     appr = (owners[i] == _owner);
+     if(appr)
+      break;
+  }
+    require(appr,"Error: not owner");
     bytes32 hash =keccak256(abi.encodePacked(dst, amt));
     return approvals[_owner][hash];
   }
