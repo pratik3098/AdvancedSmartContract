@@ -93,7 +93,11 @@ contract multiSigWallet{
     
  function consensus2(bytes32 data) internal view returns(bool){
   uint counter = 0;
-  uint midWay= (owners.length /2);
+  uint midWay;
+  if (owners.length %2 == 0)
+  midWay=(owners.length /2);
+  else
+   midWay=(owners.length /2) + 1;
   bool approved= true;
   for(uint i=0; i< owners.length; i++){
     approved= recoverSigner(data,op_signs[owners[i]]) == owners[i];
