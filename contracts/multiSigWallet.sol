@@ -28,7 +28,7 @@ contract multiSigWallet{
  
  function send(address payable dst, uint amt) public payable  _isOwner _isValidAddress(dst){
       require(amt <= address(this).balance,"Error: not enough balance");
-      bytes32 hash =  keccak256(abi.encodePacked(dst, amt));
+      bytes32 hash =  keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32",dst, amt));
       require(isapproved(hash),"Error: Transcation not approved");
       dst.transfer(amt);
       clearSigns(hash);
@@ -42,7 +42,7 @@ contract multiSigWallet{
  
  function signSendEthers(address dst, uint amt, bytes memory signature) public  _isOwner _isValidAddress(dst) {
    require(amt <= address(this).balance,"Error: not enough balance");
-   bytes32 hash =  keccak256(abi.encodePacked(dst, amt));
+   bytes32 hash =  keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32",dst, amt));
    require(verifySign(msg.sender,hash,signature), "Error: Invalid Signature");
    approvals[msg.sender][hash]=true;
    emit Signed(dst,amt);
@@ -63,7 +63,8 @@ contract multiSigWallet{
    
  function recoverSigner(bytes32 hash,bytes memory signature) internal pure returns (address)
   {
-    bytes32 signMsg = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+    
+    //keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     bytes32 r;
     bytes32 s;
     uint8 v;
@@ -74,7 +75,7 @@ contract multiSigWallet{
       v := byte(0, mload(add(signature, 0x60)))
     }  
     
-    return ecrecover(signMsg, v, r, s);
+    return ecrecover(hash, v, r, s);
   }
   
   function verifySign(address signee, bytes32 hash, bytes memory signature ) internal pure returns (bool){
