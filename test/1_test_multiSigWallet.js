@@ -1,5 +1,5 @@
 const multiSigWallet = artifacts.require('multiSigWallet');
-
+const ethers = require('ethers')
 contract("multiSigWallet", accounts => {
    let wallet
 
@@ -31,7 +31,7 @@ contract("multiSigWallet", accounts => {
      })
      
      
-     it("should be able to sign transcation", async () => {
+   /*  it("should be able to sign transcation", async () => {
       let amt =web3.utils.toWei('2', 'ether')
       await wallet.changeConsensusType(1)
       await wallet.signSendEthers(accounts[3],amt)
@@ -42,6 +42,6 @@ contract("multiSigWallet", accounts => {
      // console.log(res)
       // assert.equal(2,res, "Owner Successfully added")
      })
-
+  */
 
 })

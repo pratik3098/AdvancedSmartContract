@@ -1,15 +1,13 @@
 pragma solidity ^0.6.2;
 
 contract multiSigWallet{
-
  // Types of consensus: 1. Atleast one  2. Majority  3. All  
-
   uint constant maxOwners = 3;
 
   uint consensusType= 1;  
   
   address[] owners;
-  mapping(address=>bytes) op_signs;
+  mapping(address=> mapping (bytes32 => bool)) approvals;
   event Received(address src, uint amount);
   event Sent(address dst, uint amount);
   event Signed(address dst, uint amount);
@@ -28,11 +26,13 @@ contract multiSigWallet{
   emit NewOwner(_owner);
  }
  
- function send(address payable dst, uint amount) public payable _approveSendEthers() _isOwner _isValidAddress(dst){
-      require(amount <= address(this).balance,"Error: not enough balance");
-      dst.transfer(amount);
-      clearSigns();
-      emit Sent(dst,amount);
+ function send(address payable dst, uint amt) public payable  _isOwner _isValidAddress(dst){
+      require(amt <= address(this).balance,"Error: not enough balance");
+      bytes32 hash =  keccak256(abi.encodePacked(dst, amt));
+      require(isapproved(hash),"Error: Transcation not approved");
+      dst.transfer(amt);
+      clearSigns(hash);
+      emit Sent(dst,amt);
   }
  
  function changeConsensusType(uint _type) public _isOwner{
@@ -40,10 +40,12 @@ contract multiSigWallet{
   consensusType= _type;
  }
  
- function signSendEthers(address dst, uint amt) public  _isOwner _isValidAddress(dst) {
+ function signSendEthers(address dst, uint amt, bytes memory signature) public  _isOwner _isValidAddress(dst) {
    require(amt <= address(this).balance,"Error: not enough balance");
-   op_signs[msg.sender]= abi.encodeWithSignature("\x19Ethereum Signed Message:\n32",keccak256(abi.encodePacked(dst, amt)));
-  emit Signed(dst,amt);
+   bytes32 hash =  keccak256(abi.encodePacked(dst, amt));
+   require(verifySign(msg.sender,hash,signature), "Error: Invalid Signature");
+   approvals[msg.sender][hash]=true;
+   emit Signed(dst,amt);
  }
  
  function recieve() external payable {
@@ -59,9 +61,9 @@ contract multiSigWallet{
   }
   
    
- function recoverSigner(bytes memory signature) internal pure returns (address)
+ function recoverSigner(bytes32 hash,bytes memory signature) internal pure returns (address)
   {
-    bytes32 hash = "\x19Ethereum Signed Message:\n32";
+    bytes32 signMsg = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
     bytes32 r;
     bytes32 s;
     uint8 v;
@@ -72,14 +74,18 @@ contract multiSigWallet{
       v := byte(0, mload(add(signature, 0x60)))
     }  
     
-    return ecrecover(hash, v, r, s);
+    return ecrecover(signMsg, v, r, s);
+  }
+  
+  function verifySign(address signee, bytes32 hash, bytes memory signature ) internal pure returns (bool){
+        return (recoverSigner(hash,signature) == signee);
   }
   
  
     
- function consensus1() internal view returns(bool){
+ function consensus1(bytes32 hash) internal view returns(bool){
   for(uint i=0; i< owners.length; i++){
-   if(recoverSigner(op_signs[owners[i]]) == owners[i])
+   if(approvals[owners[i]][hash]) 
    return true;
   }
  
@@ -87,12 +93,12 @@ contract multiSigWallet{
   }
   
     
- function consensus2() internal view returns(bool){
+ function consensus2(bytes32 hash) internal view returns(bool){
   uint counter = 0;
   uint midWay= (owners.length /2);
   bool approved= true;
   for(uint i=0; i< owners.length; i++){
-    approved= recoverSigner(op_signs[owners[i]]) == owners[i];
+    approved=  approvals[owners[i]][hash];
     if(approved)
     {
       counter++;
@@ -107,10 +113,10 @@ contract multiSigWallet{
   }
   
   
-   function consensus3() internal view returns(bool){
-   bool approved= true;
+   function consensus3(bytes32 hash) internal view returns(bool){
+   bool approved = true;
     for(uint i=0; i< owners.length; i++){
-     approved= recoverSigner(op_signs[owners[i]]) == owners[i];
+     approved= approvals[owners[i]][hash];
     if(!approved){
       break;
     }
@@ -120,9 +126,9 @@ contract multiSigWallet{
   
   
   
-  function clearSigns() public {
+  function clearSigns(bytes32 hash) public {
     for(uint i=0; i< owners.length; i++){
-    op_signs[owners[i]]= "";
+    approvals[owners[i]][hash]= false;
   }
   }
   
@@ -139,16 +145,15 @@ contract multiSigWallet{
     return consensusType;
   }
 
-  modifier _approveSendEthers() {
+  function isapproved(bytes32 hash) internal view returns (bool) {
   bool appr;
   if (consensusType == 1)
-    appr= consensus1();
+    appr= consensus1(hash);
   else if (consensusType == 2)
-    appr = consensus2();
+    appr = consensus2(hash);
   else if (consensusType == 3)
-    appr = consensus3();
-    require(appr,"Error: Transcation not approved");
-   _;
+    appr = consensus3(hash);
+    return appr;
   }
   
 
