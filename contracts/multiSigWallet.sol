@@ -96,6 +96,8 @@ contract multiSigWallet{
  function consensus2(bytes32 hash) internal view returns(bool){
   uint counter = 0;
   uint midWay= (owners.length /2);
+  if (!(owners.length %2 == 0 ))
+    midWay+=1;
   bool approved= true;
   for(uint i=0; i< owners.length; i++){
     approved=  approvals[owners[i]][hash];
