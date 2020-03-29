@@ -173,7 +173,6 @@ contract multiSigWallet{
     _;
   }
   modifier _noDuplicate(address _owner){
-  bool appr;
   for(uint i=0;i< owners.length;i++){
    require(!(owners[i] == _owner),"Error: Owner already exists");
   }
