@@ -146,7 +146,7 @@ contract multiSigWallet{
   function getConsensus() external view returns (uint) {
     return consensusType;
   }
-
+  
   function isapproved(bytes32 hash) internal view returns (bool) {
   bool appr;
   if (consensusType == 1)
@@ -156,6 +156,11 @@ contract multiSigWallet{
   else if (consensusType == 3)
     appr = consensus3(hash);
     return appr;
+  }
+  
+  function isapprovedByOwner(address _owner,address dst, uint amt ) external view returns (bool){
+    bytes32 hash =keccak256(abi.encodePacked(dst, amt));
+    return approvals[_owner][hash];
   }
   
 
